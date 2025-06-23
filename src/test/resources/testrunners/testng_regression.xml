@@ -31,7 +31,6 @@
 
 	<test name="Product Details Page Test">
 		<parameter name="browser" value="edge"></parameter>
-
 		<classes>
 			<class name="com.qa.opencart.tests.ProductDetailsTest" />
 		</classes>
