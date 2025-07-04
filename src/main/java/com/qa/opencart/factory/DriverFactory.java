@@ -4,6 +4,9 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.nio.charset.MalformedInputException;
 import java.util.Properties;
 import java.util.logging.FileHandler;
 
@@ -13,6 +16,7 @@ import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.edge.EdgeDriver;
 import org.openqa.selenium.firefox.FirefoxDriver;
+import org.openqa.selenium.remote.RemoteWebDriver;
 import org.openqa.selenium.safari.SafariDriver;
 
 import com.google.common.io.Files;
@@ -23,6 +27,7 @@ import com.qa.opencart.exceptions.FrameworkException;
 public class DriverFactory {
  WebDriver driver;
  Properties prop;
+ OptionsManager om;
  public static ThreadLocal<WebDriver> tlDriver=new ThreadLocal<WebDriver>();
  //threadlocal creates a copy of the driver which every thread can use during execution
  
@@ -32,22 +37,43 @@ public class DriverFactory {
 	 //we pass Properties prop reference, and access all the key values present in properties file
 	 
 	 
-	OptionsManager om=new OptionsManager(prop);
+	 om=new OptionsManager(prop);
 	String browserName=prop.getProperty("browser");
 	//String browserName=System.getProperty("browser");
 	 System.out.println("The browser name is:"+browserName);
 	 switch (browserName.toLowerCase().trim()) {
 	case "chrome":
 		//driver=new ChromeDriver(om.getChromeOptions());
-		tlDriver.set(new ChromeDriver(om.getChromeOptions()));
+		if(Boolean.parseBoolean(prop.getProperty("remote"))){
+			//to run testcases in remote
+			initRemoteDriver(browserName);
+		}
+		else {
+			//to run testcases in local
+			tlDriver.set(new ChromeDriver(om.getChromeOptions()));
+		}
 		break;
 	case "firefox":
 		//driver=new FirefoxDriver(om.getFirefoxOptions());
-		tlDriver.set(new FirefoxDriver(om.getFirefoxOptions()));
+		if(Boolean.parseBoolean(prop.getProperty("remote"))){
+			//to run testcases in remote
+			initRemoteDriver(browserName);
+		}
+		else {
+			//to run testcases in local
+			tlDriver.set(new FirefoxDriver(om.getFirefoxOptions()));
+		}
 		break;
 	case "edge":
 		//driver=new EdgeDriver(om.getEdgeOptions());
-		tlDriver.set(new EdgeDriver());
+		if(Boolean.parseBoolean(prop.getProperty("remote"))){
+			//to run testcases in remote
+			initRemoteDriver(browserName);
+		}
+		else {
+			//to run testcases in local
+			tlDriver.set(new EdgeDriver(om.getEdgeOptions()));
+		}
 		break;
 	case "safari":
 		driver=new SafariDriver();
@@ -70,13 +96,35 @@ public class DriverFactory {
  public static WebDriver getTLDriver() {
 	 return tlDriver.get();
  }
+ 
+ private void initRemoteDriver(String browserName) {
+	 System.out.println("Executing in Selenium GRID using browsername:"+browserName);
+	try {
+	 switch(browserName.toLowerCase().trim()) {
+	case "chrome":
+		tlDriver.set(new RemoteWebDriver(new URL(prop.getProperty("huburl")),om.getChromeOptions() ));
+		break;
+ 	case "firefox":
+		tlDriver.set(new RemoteWebDriver(new URL(prop.getProperty("huburl")),om.getFirefoxOptions()));
+		break;
+ 	case "edge":
+		tlDriver.set(new RemoteWebDriver(new URL(prop.getProperty("huburl")),om.getEdgeOptions()));
+		break;
+	default:
+		System.out.println("Invalid browser"+browserName+"Cannot launch selenium grid");
+	 }
+	}
+	 catch(MalformedURLException e) {
+		 
+	 }
+ }
  	public Properties initProp() {//this method is used to read the properties file
  		
  		 //mvn clean install -Denv="qa"
  		FileInputStream io=null;
  		prop=new Properties();
  		String envName=System.getProperty("env");
- 		System.out.println(envName);
+ 		System.out.println("The Env Name is:"+envName);
  		
  			try {
  				if(envName==null) {
